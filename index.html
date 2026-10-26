@@ -1098,7 +1098,7 @@
     // Run fetch on page load and automatically re-poll every 30 seconds
     window.addEventListener('DOMContentLoaded', () => {
       fetchYouTubeData();
-      setInterval(fetchYouTubeData, 30000); // Calls the API every 30s so you never need to refresh manually!
+      setInterval(fetchYouTubeData, 10000); // Calls the API every 30s so you never need to refresh manually!
     });
   </script>
 
