@@ -891,9 +891,8 @@
     }
 
     /**
-     * Tumble (Slot Machine) Digit Rolling Transition Function
-     * Dynamically constructs vertical character wheels for changed digits
-     * and rolls them upward or downward depending on value increases/decreases.
+     * Stable Tumble Digit Transition Function
+     * Ensures numbers stay fully visible during and after transitions.
      */
     function updateTumbleValue(elementId, newTextValue) {
       const el = document.getElementById(elementId);
@@ -902,113 +901,53 @@
       const newString = String(newTextValue);
       let container = el.querySelector('.tumble-container');
 
-      // Initialize container if it doesn't exist yet
       if (!container) {
         el.innerHTML = '';
         container = document.createElement('span');
         container.className = 'tumble-container';
+        container.style.cssText = 'display: inline-flex; align-items: center;';
         el.appendChild(container);
       }
 
-      const currentDigits = Array.from(container.children);
+      const currentChars = container.children;
       const newChars = newString.split('');
 
-      // Measure character width for dynamic layout
-      const tempSpan = document.createElement('span');
-      tempSpan.style.visibility = 'hidden';
-      tempSpan.style.position = 'absolute';
-      tempSpan.style.font = window.getComputedStyle(el).font;
-      tempSpan.innerText = '0';
-      document.body.appendChild(tempSpan);
-      const charWidth = tempSpan.getBoundingClientRect().width || 18;
-      document.body.removeChild(tempSpan);
-
-      // Rebuild container structure if character lengths differ
-      if (currentDigits.length !== newChars.length) {
+      // If length changes, rebuild instantly to prevent layout break
+      if (currentChars.length !== newChars.length) {
         container.innerHTML = '';
         newChars.forEach(char => {
-          if (/\d/.test(char)) {
-            const digitWrapper = document.createElement('span');
-            digitWrapper.className = 'tumble-digit';
-            digitWrapper.style.width = charWidth + 'px';
-
-            const wheel = document.createElement('div');
-            wheel.className = 'tumble-wheel';
-            
-            const num = parseInt(char, 10);
-            const valSpan = document.createElement('span');
-            valSpan.innerText = num;
-            wheel.appendChild(valSpan);
-            wheel.dataset.current = num;
-
-            digitWrapper.appendChild(wheel);
-            container.appendChild(digitWrapper);
-          } else {
-            const charSpan = document.createElement('span');
-            charSpan.className = 'tumble-char';
-            charSpan.innerText = char;
-            container.appendChild(charSpan);
-          }
+          const span = document.createElement('span');
+          span.innerText = char;
+          span.style.display = 'inline-block';
+          container.appendChild(span);
         });
         return;
       }
 
-      // Roll each digit wheel when a value changes
-      let charIndex = 0;
+      // Update characters with a subtle fade/slide effect
+      let index = 0;
       newChars.forEach(char => {
-        const childNode = container.children[charIndex];
-        if (!childNode) return;
-
-        if (/\d/.test(char)) {
-          const targetNum = parseInt(char, 10);
-          const wheel = childNode.querySelector('.tumble-wheel');
-
-          if (wheel) {
-            const currentNum = parseInt(wheel.dataset.current || '0', 10);
-
-            if (currentNum !== targetNum) {
-              wheel.innerHTML = '';
-
-              if (targetNum > currentNum) {
-                // Number Increased -> Roll Downwards (upward content shift)
-                for (let i = currentNum; i <= targetNum; i++) {
-                  const s = document.createElement('span');
-                  s.innerText = i;
-                  wheel.appendChild(s);
-                }
-                wheel.style.transition = 'none';
-                wheel.style.transform = 'translateY(0)';
-                wheel.offsetHeight; // Force reflow
-                wheel.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
-                wheel.style.transform = `translateY(-${(targetNum - currentNum) * 100}%)`;
-              } else {
-                // Number Decreased -> Roll Upwards (downward content shift)
-                for (let i = currentNum; i >= targetNum; i--) {
-                  const s = document.createElement('span');
-                  s.innerText = i;
-                  wheel.appendChild(s);
-                }
-                wheel.style.transition = 'none';
-                wheel.style.transform = 'translateY(0)';
-                wheel.offsetHeight; // Force reflow
-                wheel.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
-                wheel.style.transform = `translateY(-${(currentNum - targetNum) * 100}%)`;
-              }
-
-              wheel.dataset.current = targetNum;
-            }
-          }
-        } else {
-          childNode.innerText = char;
+        const span = container.children[index];
+        if (span && span.innerText !== char) {
+          span.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+          span.style.opacity = '0';
+          span.style.transform = 'translateY(-8px)';
+          
+          setTimeout(() => {
+            span.innerText = char;
+            span.style.transform = 'translateY(8px)';
+            span.offsetHeight; // force reflow
+            span.style.opacity = '1';
+            span.style.transform = 'translateY(0)';
+          }, 200);
         }
-        charIndex++;
+        index++;
       });
     }
 
     // Fetch Channel Stats & Uploads Playlist
     async function fetchYouTubeData() {
       try {
-        // 1. Fetch Channel Statistics
         const channelRes = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics,contentDetails&id=${CHANNEL_ID}&key=${API_KEY}`);
         const channelData = await channelRes.json();
 
@@ -1019,7 +958,6 @@
           updateTumbleValue('view-count', formatNumber(stats.viewCount));
           updateTumbleValue('video-count', formatNumber(stats.videoCount));
 
-          // Get uploads playlist ID (Replace 'UC' with 'UU')
           const uploadsPlaylistId = "UU" + CHANNEL_ID.substring(2);
           fetchPlaylistVideos(uploadsPlaylistId);
         }
@@ -1059,7 +997,6 @@
               </div>
             `;
 
-            // Open video in modal on click
             card.addEventListener('click', () => {
               openVideoModal(videoId);
             });
@@ -1095,10 +1032,10 @@
       if (e.target === modalOverlay) closeVideoModal();
     });
 
-    // Run fetch on page load and automatically re-poll every 30 seconds
+    // Run fetch on page load and poll every 30 seconds automatically
     window.addEventListener('DOMContentLoaded', () => {
       fetchYouTubeData();
-      setInterval(fetchYouTubeData, 10000); // Calls the API every 30s so you never need to refresh manually!
+      setInterval(fetchYouTubeData, 30000);
     });
   </script>
 
