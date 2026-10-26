@@ -880,8 +880,7 @@
       </div>
     </div>
   </footer>
-
-  <!-- YOUTUBE API INTEGRATION & TUMBLE TRANSITION SCRIPT -->
+<!-- YOUTUBE API INTEGRATION & TUMBLE TRANSITION SCRIPT -->
   <script>
     const API_KEY = "AIzaSyDj6mlqvaEI5FtMZug_DWzr-ZIKvDzpUFQ";
     const CHANNEL_ID = "UCGOjUEt1UyUfq5o_OoxlNkA";
@@ -1096,11 +1095,12 @@
       if (e.target === modalOverlay) closeVideoModal();
     });
 
-    // Run fetch on page load and poll every 30 seconds for live data updates
+    // Run fetch on page load and automatically re-poll every 30 seconds
     window.addEventListener('DOMContentLoaded', () => {
       fetchYouTubeData();
-      setInterval(fetchYouTubeData, 30000);
+      setInterval(fetchYouTubeData, 30000); // Calls the API every 30s so you never need to refresh manually!
     });
   </script>
+
 </body>
 </html>
