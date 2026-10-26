@@ -219,7 +219,7 @@
     }
 
     /* ==========================================================================
-       HERO SECTION
+       HERO SECTION & TUMBLE DIGIT ANIMATION
        ========================================================================== */
     .hero {
       padding: clamp(40px, 8vh, 90px) 0;
@@ -278,6 +278,45 @@
       font-size: clamp(1.3rem, 2.2vw, 2rem);
       font-weight: 800;
       color: var(--text-main);
+    }
+
+    /* Tumble Digit Wheel Styling */
+    .tumble-container {
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+      vertical-align: baseline;
+    }
+
+    .tumble-digit {
+      display: inline-block;
+      overflow: hidden;
+      height: 1em;
+      position: relative;
+    }
+
+    .tumble-wheel {
+      display: flex;
+      flex-direction: column;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .tumble-wheel span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 1em;
+      line-height: 1em;
+    }
+
+    .tumble-char {
+      display: inline-block;
+      height: 1em;
+      line-height: 1em;
     }
 
     .stat-box .label {
@@ -798,7 +837,7 @@
         </div>
       </div>
     </div>
-  </section>s
+  </section>
 
   <!-- VIDEO MODAL -->
   <div class="modal-overlay" id="videoModal">
@@ -842,7 +881,7 @@
     </div>
   </footer>
 
-  <!-- YOUTUBE API INTEGRATION SCRIPT -->
+  <!-- YOUTUBE API INTEGRATION & TUMBLE TRANSITION SCRIPT -->
   <script>
     const API_KEY = "AIzaSyDj6mlqvaEI5FtMZug_DWzr-ZIKvDzpUFQ";
     const CHANNEL_ID = "UCGOjUEt1UyUfq5o_OoxlNkA";
@@ -850,6 +889,121 @@
     // Format numbers compactly (e.g. 1.2M, 45K)
     function formatNumber(num) {
       return Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(num);
+    }
+
+    /**
+     * Tumble (Slot Machine) Digit Rolling Transition Function
+     * Dynamically constructs vertical character wheels for changed digits
+     * and rolls them upward or downward depending on value increases/decreases.
+     */
+    function updateTumbleValue(elementId, newTextValue) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+
+      const newString = String(newTextValue);
+      let container = el.querySelector('.tumble-container');
+
+      // Initialize container if it doesn't exist yet
+      if (!container) {
+        el.innerHTML = '';
+        container = document.createElement('span');
+        container.className = 'tumble-container';
+        el.appendChild(container);
+      }
+
+      const currentDigits = Array.from(container.children);
+      const newChars = newString.split('');
+
+      // Measure character width for dynamic layout
+      const tempSpan = document.createElement('span');
+      tempSpan.style.visibility = 'hidden';
+      tempSpan.style.position = 'absolute';
+      tempSpan.style.font = window.getComputedStyle(el).font;
+      tempSpan.innerText = '0';
+      document.body.appendChild(tempSpan);
+      const charWidth = tempSpan.getBoundingClientRect().width || 18;
+      document.body.removeChild(tempSpan);
+
+      // Rebuild container structure if character lengths differ
+      if (currentDigits.length !== newChars.length) {
+        container.innerHTML = '';
+        newChars.forEach(char => {
+          if (/\d/.test(char)) {
+            const digitWrapper = document.createElement('span');
+            digitWrapper.className = 'tumble-digit';
+            digitWrapper.style.width = charWidth + 'px';
+
+            const wheel = document.createElement('div');
+            wheel.className = 'tumble-wheel';
+            
+            const num = parseInt(char, 10);
+            const valSpan = document.createElement('span');
+            valSpan.innerText = num;
+            wheel.appendChild(valSpan);
+            wheel.dataset.current = num;
+
+            digitWrapper.appendChild(wheel);
+            container.appendChild(digitWrapper);
+          } else {
+            const charSpan = document.createElement('span');
+            charSpan.className = 'tumble-char';
+            charSpan.innerText = char;
+            container.appendChild(charSpan);
+          }
+        });
+        return;
+      }
+
+      // Roll each digit wheel when a value changes
+      let charIndex = 0;
+      newChars.forEach(char => {
+        const childNode = container.children[charIndex];
+        if (!childNode) return;
+
+        if (/\d/.test(char)) {
+          const targetNum = parseInt(char, 10);
+          const wheel = childNode.querySelector('.tumble-wheel');
+
+          if (wheel) {
+            const currentNum = parseInt(wheel.dataset.current || '0', 10);
+
+            if (currentNum !== targetNum) {
+              wheel.innerHTML = '';
+
+              if (targetNum > currentNum) {
+                // Number Increased -> Roll Downwards (upward content shift)
+                for (let i = currentNum; i <= targetNum; i++) {
+                  const s = document.createElement('span');
+                  s.innerText = i;
+                  wheel.appendChild(s);
+                }
+                wheel.style.transition = 'none';
+                wheel.style.transform = 'translateY(0)';
+                wheel.offsetHeight; // Force reflow
+                wheel.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+                wheel.style.transform = `translateY(-${(targetNum - currentNum) * 100}%)`;
+              } else {
+                // Number Decreased -> Roll Upwards (downward content shift)
+                for (let i = currentNum; i >= targetNum; i--) {
+                  const s = document.createElement('span');
+                  s.innerText = i;
+                  wheel.appendChild(s);
+                }
+                wheel.style.transition = 'none';
+                wheel.style.transform = 'translateY(0)';
+                wheel.offsetHeight; // Force reflow
+                wheel.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+                wheel.style.transform = `translateY(-${(currentNum - targetNum) * 100}%)`;
+              }
+
+              wheel.dataset.current = targetNum;
+            }
+          }
+        } else {
+          childNode.innerText = char;
+        }
+        charIndex++;
+      });
     }
 
     // Fetch Channel Stats & Uploads Playlist
@@ -861,9 +1015,10 @@
 
         if (channelData.items && channelData.items.length > 0) {
           const stats = channelData.items[0].statistics;
-          document.getElementById('sub-count').innerText = formatNumber(stats.subscriberCount);
-          document.getElementById('view-count').innerText = formatNumber(stats.viewCount);
-          document.getElementById('video-count').innerText = formatNumber(stats.videoCount);
+          
+          updateTumbleValue('sub-count', formatNumber(stats.subscriberCount));
+          updateTumbleValue('view-count', formatNumber(stats.viewCount));
+          updateTumbleValue('video-count', formatNumber(stats.videoCount));
 
           // Get uploads playlist ID (Replace 'UC' with 'UU')
           const uploadsPlaylistId = "UU" + CHANNEL_ID.substring(2);
@@ -941,8 +1096,11 @@
       if (e.target === modalOverlay) closeVideoModal();
     });
 
-    // Run fetch on page load
-    window.addEventListener('DOMContentLoaded', fetchYouTubeData);
+    // Run fetch on page load and poll every 30 seconds for live data updates
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchYouTubeData();
+      setInterval(fetchYouTubeData, 30000);
+    });
   </script>
 </body>
-</html>s
+</html>
